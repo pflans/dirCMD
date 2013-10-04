@@ -1,3 +1,5 @@
+Goal of the project: Command line script to export a selected directory's structure in a specific format
+
 Things to do:
 
 Finish XML export function
