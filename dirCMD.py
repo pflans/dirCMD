@@ -2,42 +2,61 @@ import os
 import sys
 import json
 import argparse
-from xml.sax.saxutils import quoteattr as xml_quoteattr
-from collections import defaultdict
+from dicttoxml import dicttoxml
+from xml.dom.minidom import parseString
 from pprint import pprint
 
-def set_leaf(root, dirs, item):
+def nodot(item): return item[0] != '.'
 
-    if len(dirs) == 1:
-        root[dirs[0]] = item
+def walker(tree, branches, node):
+    if len(branches) == 1:
+        tree[branches[0]] = node
         return
-    if not root.has_key(dirs[0]):
-        root[dirs[0]] = {}
-    set_leaf(root[dirs[0]], dirs[1:], item)
-
-def main(argv):                         
-    parser = argparse.ArgumentParser(description='Print a directory root.')
+    if not branches[0] in tree:
+        tree[branches[0]] = {}
+    walker(tree[branches[0]], branches[1:], node)
+    
+    
+def buildTree(tree, startpath):
+    startdir = startpath.split('/')[-1]
+    for root, dirs, files in os.walk(startpath):
+        if verbose:
+            path = root.split('/')
+            print root       
+            for file in files:
+                print str(root) + str(file)
+        branches = [startdir]
+        if root != startpath:
+            branches.extend(os.path.relpath(root, startpath).split('/'))
+        walker(tree, branches, dict([(d,{}) for d in dirs]+ \
+                                      [(f,os.path.splitext(f)[1]) for f in filter(nodot, files)]))
+def xmlBuilder(tree):
+    for key, value in tree.iteritems():
+        if isinstance(value, dict):
+            print '<directory name="%(name)s">' %{"name": key}
+            xmlBuilder(value)
+            print '</directory>'
+        else:
+            print '<file name="%(name)s">' %{"name": key}
+            print '<attribute extension="%(ext)s">' %{"ext": value}
+            print '</file>'
+            
+def main(argv):   
+    global verbose
+    parser = argparse.ArgumentParser(description='Print a directory tree.')
     parser.add_argument('path', metavar='P',
-                       help='starting path for the root traversal')
-    parser.add_argument('-v', '--verbose', help='print directory traversal process (increases running time)', action="store_true")
+                       help='starting path for the tree traversal')
+    parser.add_argument('-v', '--verbose', help='print directory traversal', action="store_true")
 
     args = parser.parse_args()
     verbose = args.verbose
     path = args.path 
-  
-    startpath = path
-    root = {}
-    for root, dirs, files in os.walk(startpath):
-        dirs = [startpath]
-        if root != startpath:
-            dirs.extend(os.path.relpath(root, startpath).split('/'))
     
-        set_leaf(root, dirs, dict([(d,{}) for d in dirs]+ \
-                                      [(f,None) for f in files]))
-        
-    pprint(root)
-    
+    tree = {}
+    buildTree(tree, path)
 
+    xmlBuilder(tree)
+    #json.dumps(tree)
         
 if __name__ == '__main__':
     
