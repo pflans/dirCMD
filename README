@@ -1,0 +1,8 @@
+Goal of the project: Refactor original script into a command line tool to export a selected directory's structure in a specific format
+
+Things to do:
+
+Finish XML export function
+Add JSON export function
+Add flags for JSON/XML format selection
+Other types (delimited, visual, ect)?
