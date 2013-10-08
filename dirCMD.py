@@ -1,4 +1,5 @@
 import os
+from lxml import etree
 import sys
 import json
 import argparse
@@ -17,35 +18,22 @@ def walker(tree, branches, node):
     walker(tree[branches[0]], branches[1:], node)
     
     
-def buildTree(tree, startpath):
-    startdir = startpath.split('/')[-1]
-    for root, dirs, files in os.walk(startpath):
-        if verbose:
-            path = root.split('/')     
-            for file in files:
-                print str(root) + str(file)
-        branches = [startdir]
-        if root != startpath:
-            branches.extend(os.path.relpath(root, startpath).split('/'))
-        walker(tree, branches, dict([(d,{}) for d in dirs]+ \
-                                      [(f,os.path.splitext(f)[1]) for f in filter(nodot, files)]))
-class xmlBuilder(object):
-    def __init__(self, tree):
-        self.output = ''
-        self.tree = tree
-        self.xmlConstructor(tree)
-            
-    def xmlConstructor(self, tree):
-        for key, value in tree.iteritems():
-            if isinstance(value, dict):
-                self.output += '<directory name="%(name)s">' %{"name": key}
-                self.xmlConstructor(value)
-                self.output += '</directory>'
-            else:
-                self.output += '<file name="%(name)s">' %{"name": key}
-                self.output += '<attribute extension="%(ext)s"></file>' %{"ext": value}             
-    
-    
+def buildTree(path):
+    basename = os.path.basename(path)
+    node = etree.Element("node")
+    node.attrib['name'] = basename.decode('utf-8')
+    if os.path.isdir(path):
+        # Recurse
+        node.tag = 'dir'
+        for item in sorted(os.listdir(path)):
+            item_path = os.path.join(path, item)
+            child_node = buildTree(item_path)
+            node.append(child_node)
+        return node
+    else:
+        node.tag = 'file'
+        return node    
+
             
 def main(argv):   
     global verbose
@@ -57,11 +45,19 @@ def main(argv):
     args = parser.parse_args()
     verbose = args.verbose
     path = args.path 
+
+
+    root = buildTree(path)
     
-    tree = {}
-    buildTree(tree, path)
+    # Create an element tree from the root node
+    # (in order to serialize it to a complete XML document)
+    tree = etree.ElementTree(root)
     
-    print xmlBuilder(tree).output
+    xml_document = etree.tostring(tree,
+                                  pretty_print=True,
+                                  xml_declaration=True,
+                                  encoding='utf-8')
+    print xml_document
    
     #json.dumps(tree)
         
