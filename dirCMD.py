@@ -21,8 +21,7 @@ def buildTree(tree, startpath):
     startdir = startpath.split('/')[-1]
     for root, dirs, files in os.walk(startpath):
         if verbose:
-            path = root.split('/')
-            print root       
+            path = root.split('/')     
             for file in files:
                 print str(root) + str(file)
         branches = [startdir]
@@ -30,16 +29,23 @@ def buildTree(tree, startpath):
             branches.extend(os.path.relpath(root, startpath).split('/'))
         walker(tree, branches, dict([(d,{}) for d in dirs]+ \
                                       [(f,os.path.splitext(f)[1]) for f in filter(nodot, files)]))
-def xmlBuilder(tree):
-    for key, value in tree.iteritems():
-        if isinstance(value, dict):
-            print '<directory name="%(name)s">' %{"name": key}
-            xmlBuilder(value)
-            print '</directory>'
-        else:
-            print '<file name="%(name)s">' %{"name": key}
-            print '<attribute extension="%(ext)s">' %{"ext": value}
-            print '</file>'
+class xmlBuilder(object):
+    def __init__(self, tree):
+        self.output = ''
+        self.tree = tree
+        self.xmlConstructor(tree)
+            
+    def xmlConstructor(self, tree):
+        for key, value in tree.iteritems():
+            if isinstance(value, dict):
+                self.output += '<directory name="%(name)s">' %{"name": key}
+                self.xmlConstructor(value)
+                self.output += '</directory>'
+            else:
+                self.output += '<file name="%(name)s">' %{"name": key}
+                self.output += '<attribute extension="%(ext)s"></file>' %{"ext": value}             
+    
+    
             
 def main(argv):   
     global verbose
@@ -54,8 +60,9 @@ def main(argv):
     
     tree = {}
     buildTree(tree, path)
-
-    xmlBuilder(tree)
+    
+    print xmlBuilder(tree).output
+   
     #json.dumps(tree)
         
 if __name__ == '__main__':
