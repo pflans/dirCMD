@@ -9,15 +9,6 @@ from pprint import pprint
 
 def nodot(item): return item[0] != '.'
 
-def walker(tree, branches, node):
-    if len(branches) == 1:
-        tree[branches[0]] = node
-        return
-    if not branches[0] in tree:
-        tree[branches[0]] = {}
-    walker(tree[branches[0]], branches[1:], node)
-    
-    
 def buildTree(path):
     basename = os.path.basename(path)
     node = etree.Element("node")
